@@ -1,0 +1,41 @@
+isin,name,kind,asset_class,sub_class,tax_class,sector,issuer,symbol,listed,amfi_code,amc,mf_category,plan,mod_duration,face_value,coupon,coupon_freq,maturity,maturity_is_estimate,rating,tax_free_interest
+IN0020210053,2.5%GOLDBONDS2029SR-I,sgb,gold,Sovereign Gold Bond,listed_other,,Government of India (RBI),SGBMAY29I,True,,,,,,,0.025,2,2029-06-30,True,,False
+IN0020230077,GOI LOAN  7.18% 2037,gsec,debt,G-Sec,listed_other,,Government of India,718GS2037,True,,,,,,100.0,0.0718,2,2037-06-30,True,SOV,False
+INE002A01018,RELIANCE INDUSTRIES LTD,equity,equity,Listed equity,equity,Oil Gas & Consumable Fuels,,RELIANCE,True,,,,,,,,,,False,,False
+INE009A01021,INFOSYS LIMITED,equity,equity,Listed equity,equity,Information Technology,,INFY,True,,,,,,,,,,False,,False
+INE018A01030,LARSEN & TOUBRO LTD.,equity,equity,Listed equity,equity,Construction,,LT,True,,,,,,,,,,False,,False
+INE020B01018,REC LIMITED,equity,equity,Listed equity,equity,Financial Services,,RECLTD,True,,,,,,,,,,False,,False
+INE020B07GH7,8.12/8.32% TAX FREE NCD,corp_bond,debt,Corporate bond,listed_other,,REC Ltd,812REC27,True,,,,,,1000.0,0.0832,1,2027-06-30,True,AAA,True
+INE021A01026,ASIAN PAINTS LIMITED,equity,equity,Listed equity,equity,Consumer Durables,,ASIANPAINT,True,,,,,,,,,,False,,False
+INE030A01027,HINDUSTAN UNILEVER LTD.,equity,equity,Listed equity,equity,Fast Moving Consumer Goods,,HINDUNILVR,True,,,,,,,,,,False,,False
+INE031A07840,8.20 NCD05MAR27 FV 1000,corp_bond,debt,Corporate bond,listed_other,,HUDCO,82HUDCO27,True,,,,,,1000.0,0.082,1,2027-03-05,False,AAA,False
+INE040A01034,HDFC BANK LTD,equity,equity,Listed equity,equity,Financial Services,,HDFCBANK,True,,,,,,,,,,False,,False
+INE053F01010,INDIAN RAILWAY FIN CORP L,equity,equity,Listed equity,equity,Financial Services,,IRFC,True,,,,,,,,,,False,,False
+INE053F07579,7.34 NCD 19FEB28 TR1 SR2,corp_bond,debt,Corporate bond,listed_other,,Indian Railway Finance Corp,734IRFC28,True,,,,,,1000.0,0.0734,1,2028-02-19,False,AAA,False
+INE062A01020,STATE BANK OF INDIA,equity,equity,Listed equity,equity,Financial Services,,SBIN,True,,,,,,,,,,False,,False
+INE090A01021,ICICI BANK LTD.,equity,equity,Listed equity,equity,Financial Services,,ICICIBANK,True,,,,,,,,,,False,,False
+INE134E01011,POWER FIN CORP LTD.,equity,equity,Listed equity,equity,Financial Services,,PFC,True,,,,,,,,,,False,,False
+INE154A01025,ITC LTD,equity,equity,Listed equity,equity,Fast Moving Consumer Goods,,ITC,True,,,,,,,,,,False,,False
+INE296A01032,BAJAJ FINANCE LIMITED,equity,equity,Listed equity,equity,Financial Services,,BAJFINANCE,True,,,,,,,,,,False,,False
+INE397D01024,BHARTI AIRTEL LIMITED,equity,equity,Listed equity,equity,Telecommunication,,BHARTIARTL,True,,,,,,,,,,False,,False
+INE467B01029,TATA CONSULTANCY SERV LT,equity,equity,Listed equity,equity,Information Technology,,TCS,True,,,,,,,,,,False,,False
+INE530B07534,IIFL 9.30% NCD 2027 TR I SR III,corp_bond,debt,Corporate bond,listed_other,,IIFL Finance,930IIFL27,True,,,,,,1000.0,0.093,1,2027-06-30,True,AA,False
+INE860H07IS6,ABCL 8.1% SR VI,corp_bond,debt,Corporate bond,listed_other,,Aditya Birla Capital,81ABCL33,True,,,,,,1000.0,0.081,1,2033-06-30,True,AAA,False
+INE906B07DF8,8.75% TAX FREE TR I S IIB,corp_bond,debt,Corporate bond,listed_other,,National Highways Authority of India,875NHAI29,True,,,,,,1000.0,0.0875,1,2029-06-30,True,AAA,True
+INF109K01654,ICICI Prudential Short Term Fund - Regular Plan - Growth,mf,debt,Short Duration Fund,specified_debt,,ICICI Prudential Mutual Fund,,False,101758,ICICI Prudential Mutual Fund,Open Ended Schemes(Debt Scheme - Short Duration Fund),Regular,2.5,,,,,False,,False
+INF109K01761,ICICI Prudential Multi Asset Allocation Fund - Regular Plan - Growth,mf,hybrid,Multi Asset Allocation Fund,other_mf,,ICICI Prudential Mutual Fund,,False,101144,ICICI Prudential Mutual Fund,Open Ended Schemes(Hybrid Schemes - Multi Asset Allocation Fund),Regular,1.5,,,,,False,,False
+INF109K01BL4,ICICI Prudential Large Cap Fund (erstwhile Bluechip Fund) - Regular Plan - Growth,mf,equity,Large Cap Fund,equity,,ICICI Prudential Mutual Fund,,False,108466,ICICI Prudential Mutual Fund,Open Ended Schemes(Equity Scheme - Large Cap Fund),Regular,,,,,,False,,False
+INF174K01302,Kotak Arbitrage Fund - Regular Plan - Growth,mf,hybrid,Arbitrage Fund,equity,,Kotak Mahindra Mutual Fund,,False,105968,Kotak Mahindra Mutual Fund,Open Ended Schemes(Hybrid Scheme - Arbitrage Fund),Regular,0.3,,,,,False,,False
+INF174K01DS9,Kotak Mid Cap Fund - Regular Plan - Growth,mf,equity,Mid Cap Fund,equity,,Kotak Mahindra Mutual Fund,,False,104908,Kotak Mahindra Mutual Fund,Open Ended Schemes(Equity Schemes - Mid Cap Fund),Regular,,,,,,False,,False
+INF179K01608,HDFC Flexi Cap Fund - Regular Plan - Growth Option,mf,equity,Flexi Cap Fund,equity,,HDFC Mutual Fund,,False,101762,HDFC Mutual Fund,Open Ended Schemes(Equity Scheme - Flexi Cap Fund),Regular,,,,,,False,,False
+INF179K01830,HDFC Balanced Advantage Fund - Regular Plan - Growth Option,mf,hybrid,Dynamic Asset Allocation or Balanced Advantage,equity,,HDFC Mutual Fund,,False,100119,HDFC Mutual Fund,Open Ended Schemes(Hybrid Scheme - Dynamic Asset Allocation or Balanced Advantage),Regular,1.0,,,,,False,,False
+INF179K01DC2,HDFC Corporate Bond Fund - Regular Plan - Growth Option,mf,debt,Corporate Bond Fund,specified_debt,,HDFC Mutual Fund,,False,113070,HDFC Mutual Fund,Open Ended Schemes(Debt Scheme - Corporate Bond Fund),Regular,2.8,,,,,False,,False
+INF200K01AH1,SBI GILT FUND - Regular Plan - Growth,mf,debt,Gilt Fund,specified_debt,,SBI Mutual Fund,,False,101934,SBI Mutual Fund,Open Ended Schemes(Debt Scheme - Gilt Fund),Regular,7.0,,,,,False,,False
+INF200K01T28,SBI SMALL CAP FUND - Regular Plan - Growth,mf,equity,Small Cap Fund,equity,,SBI Mutual Fund,,False,125494,SBI Mutual Fund,Open Ended Schemes(Equity Scheme - Small Cap Fund),Regular,,,,,,False,,False
+INF204K01HY3,Nippon India Small Cap Fund - Regular Plan - Growth Option,mf,equity,Small Cap Fund,equity,,Nippon India Mutual Fund,,False,113177,Nippon India Mutual Fund,Open Ended Schemes(Equity Scheme - Small Cap Fund),Regular,,,,,,False,,False
+INF204KB14I2,Nippon India ETF Nifty 50 BeES - Direct Plan,etf,equity,Equity ETF,equity,,Nippon India Mutual Fund,NIFTYBEES,True,140084,Nippon India Mutual Fund,Open Ended Schemes(Other Scheme - Other  ETFs),Direct,,,,,,False,,False
+INF204KB17I5,Nippon India ETF Gold BeES - Direct Plan,etf,gold,Gold,listed_other,,Nippon India Mutual Fund,GOLDBEES,True,140088,Nippon India Mutual Fund,Open Ended Schemes(Other Scheme - Gold ETF),Direct,,,,,,False,,False
+INF209K01RU9,Aditya Birla Sun Life Liquid Fund - Regular Plan - GROWTH,mf,debt,Liquid Fund,specified_debt,,Aditya Birla Sun Life Mutual Fund,,False,100047,Aditya Birla Sun Life Mutual Fund,Open Ended Schemes(Income/Debt Oriented Schemes - Liquid Fund),Regular,0.1,,,,,False,,False
+INF769K01101,Mirae Asset Large & Midcap Fund - Regular Plan - Growth,mf,equity,Large & Mid Cap Fund,equity,,Mirae Asset Mutual Fund,,False,112932,Mirae Asset Mutual Fund,Open Ended Schemes(Equity Schemes - Large & Mid Cap Fund),Regular,,,,,,False,,False
+INF846K01131,Axis ELSS- Tax Saver Fund - Regular Plan - Growth Option,mf,equity,ELSS- Tax Saver Fund,equity,,Axis Mutual Fund,,False,112323,Axis Mutual Fund,Open Ended Schemes(Equity Schemes - ELSS- Tax Saver Fund),Regular,,,,,,False,,False
+INF879O01019,Parag Parikh Flexi Cap Fund - Regular Plan - Growth,mf,equity,Flexi Cap Fund,equity,,PPFAS Mutual Fund,,False,122640,PPFAS Mutual Fund,Open Ended Schemes(Equity Scheme - Flexi Cap Fund),Regular,,,,,,False,,False
