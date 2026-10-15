@@ -1,0 +1,19 @@
+# Runtime data (client data, market cache) — never commit
+/data/*
+!/data/.gitkeep
+*.pdf
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Frontend
+node_modules/
+backend/kosh/web_dist/
+frontend/dist/
+
+.DS_Store
