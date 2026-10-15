@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.1 — for review with the consultant |
+| **Status** | Draft v0.2 — updated for the consultant's MFD registration |
 | **Last updated** | 2026-10-15 |
 | **Scope** | MVP only. Later phases are listed but not specified. |
 
@@ -54,9 +54,11 @@ change is made.
 - Placing trades or connecting to brokers to execute orders.
 - A client-facing app or login.
 - Live (tick-by-tick) prices. End-of-day data is enough for an advisory workflow.
-- Automated investment recommendations. Kosh *informs* the advisor; the
-  advisor decides. This keeps the product clear of the regulatory line on
-  automated advice (see §9.2).
+- Investment recommendations of any kind, automated or otherwise. The
+  consultant is a Mutual Fund Distributor, not a SEBI-registered Investment
+  Adviser, so Kosh is an **information, reporting and what-if tool**. It
+  shows facts, exposures and tax consequences; it never tells anyone what
+  to buy or sell (see §9).
 - Full ITR filing or tax-return preparation.
 
 ---
@@ -65,7 +67,7 @@ change is made.
 
 | User | Description | MVP? |
 |---|---|---|
-| **Advisor** (primary) | The consultant. Manages all clients, imports data, reviews impact, plans changes. | ✅ |
+| **Advisor** (primary) | The consultant, an AMFI-registered Mutual Fund Distributor (ARN holder). Manages all clients, imports data, reviews impact, models changes. "Advisor" is used in this document as a role name only; the product UI must not describe him as an adviser (see §9.1). | ✅ |
 | **Advisor staff** | Back-office assistant who imports statements and checks data. | Later (needs roles) |
 | **Client** | End investor who views their own portfolio and reports. | Later |
 
@@ -101,9 +103,9 @@ Start from an event or instrument (e.g. "ABC Ltd downgraded to A-",
 "10Y G-sec yield +25 bps", "Sector: PSU banks") and get every exposed client
 with a rupee estimate of the impact.
 
-**W5. Plan a rebalance with its tax cost**
-For a client, propose sells and buys (or set a target allocation). Kosh
-picks the lots to sell, shows STCG/LTCG for each lot, the use of the yearly
+**W5. Model a portfolio change and its tax cost**
+For a client, enter the sells and buys being considered (or a target
+allocation the client has chosen). Kosh works out the lots sold, shows STCG/LTCG for each lot, the use of the yearly
 LTCG exemption, losses available to set off, the estimated tax, exit loads
 and post-tax proceeds, and the new allocation. Export the plan as a PDF or
 Excel file for the client conversation.
@@ -121,7 +123,9 @@ Priority: **P0** = MVP must-have, **P1** = MVP if time allows, **P2** = later.
   surcharge band, family group, notes.
 - F1.2 Group clients into **families/households** (P1). Most advisors
   manage family portfolios together.
-- F1.3 Record the client's **risk profile** and **target allocation** (by
+- F1.3 Record the client's **risk profile** (as stated by the client or
+  from the distributor's own risk-profiling questionnaire) and the
+  client's chosen **target allocation** (by
   asset class, and optionally by sub-class such as "Debt: G-sec / Corporate
   AAA / Corporate below AAA").
 - F1.4 Record carried-forward capital losses from previous years, entered
@@ -135,6 +139,13 @@ Supported sources in the MVP:
 |---|---|---|---|
 | **MF CAS (detailed)** | CAMS / KFintech | All MF folios across AMCs, with **full transaction history** (purchases, redemptions, switches, SIPs, dividends, stamp duty, STT) | Mutual funds only |
 | **Depository CAS** | NSDL / CDSL | Demat holdings (equity, ETFs, bonds, SGBs, demat MF units) with month-end values, plus that month's transactions | **No purchase cost or history before the statement period** |
+| **Distributor feeds** (P1) | CAMS / KFintech distributor services | Transactions and holdings of clients mapped to the consultant's ARN, delivered as regular reports or files | Only covers folios under his ARN; formats and access to be confirmed with the RTAs |
+
+Because the consultant is an MFD, the registrars already send him data on
+the folios he distributes. Using these distributor feeds (P1) would keep MF
+data current without asking clients for a new CAS every month. The client's
+CAS stays the source of truth, because it also covers holdings bought
+directly or through other distributors.
 
 Requirements:
 - F2.1 Upload password-protected PDFs (the password is normally PAN-based).
@@ -153,8 +164,16 @@ Requirements:
   acquisition cost, so the MVP must offer:
   - (P0) manual entry or bulk Excel/CSV upload of purchase lots
     (date, units, price) for each holding;
-  - (P1) import of a broker **tradebook / tax P&L** export (Zerodha,
-    Groww, ICICI Direct, etc.; broker-specific parsers);
+  - (P0) a **generic tradebook CSV template** that any broker's export can
+    be pasted into, since we don't yet know which brokers clients use;
+  - (P1) broker-specific **tradebook / tax P&L** parsers (Zerodha, Groww,
+    ICICI Direct, etc.), built in the order shown by the broker report
+    below;
+  - (P0) a **"Depository participants in use" report**. The depository CAS
+    names the depository participant (usually the client's broker) for each
+    demat account, so after the first batch of imports Kosh can show which
+    brokers clients actually use, and how much value sits with each. This
+    answers Q3 from real data;
   - holdings without a cost basis are marked **"Cost unknown"**. They are
     valued normally but left out of tax calculations, with a visible warning.
 - F2.7 Keep the original PDF (encrypted at rest) linked to the import record
@@ -186,7 +205,7 @@ See **§5 Market data strategy** for sources.
 
 ### F4. Portfolio views (P0)
 
-- F4.1 **Book overview:** total assets under advice, number of clients,
+- F4.1 **Book overview:** total value tracked (and value under his ARN, P1), number of clients,
   day / month-to-date / year-to-date change, and the top movers among
   clients and instruments.
 - F4.2 **Client portfolio:**
@@ -254,9 +273,10 @@ estimated impact on every client and on the whole book:
 - F6.4 **Realised gains to date** for the current financial year, split into
   STCG/LTCG and by tax rate category, including the LTCG exemption used
   so far and set-off of losses (current year and carried forward).
-- F6.5 **Rebalance planner:**
-  - input: either a list of proposed transactions, or a target allocation
-    from which Kosh proposes the sells;
+- F6.5 **What-if planner** (named so in the UI; not "recommendations"):
+  - input: either a list of transactions being considered, or a target
+    allocation the client has chosen, from which Kosh computes the trades
+    needed to reach it (shown as a calculation, not advice);
   - output: units sold per lot, gains by category, estimated tax
     (including surcharge and cess), exit loads, STT and stamp duty, post-tax
     proceeds and the allocation after the change;
@@ -266,9 +286,11 @@ estimated impact on every client and on the whole book:
     (default 60), with the tax saved by waiting;
   - **LTCG exemption harvesting:** how much LTCG can be realised this
     financial year tax-free under the ₹1.25 lakh exemption;
-  - **loss harvesting suggestions:** unrealised losses that could offset
-    gains already realised.
+  - **unrealised losses available:** unrealised losses that could offset
+    gains already realised, shown as facts, not suggestions.
 - F6.6 **Export** the plan as PDF and Excel (P0) for the client meeting.
+  Every export carries a standard disclaimer (§9.1), the consultant's ARN,
+  and the assumptions used.
 - F6.7 **Assumptions panel:** every tax estimate shows the slab, regime
   and surcharge assumptions it used, and those can be overridden per plan.
 - F6.8 (P2) ESOP/RSU module: see §7.4. In the MVP, ESOP/RSU shares that
@@ -354,6 +376,14 @@ The UI shows which level was used.
 - **First paid upgrade, when the advisor needs it:** a bond valuation feed
   (CRISIL/ICRA) for accurate corporate bond prices. This is the biggest
   quality gap in the free setup.
+- **Decision rule for the bond feed.** We don't yet know how much of the
+  book is in corporate bonds (Q4). At M2, Kosh produces a **bond exposure
+  report**: value held directly in corporate bonds, split by listed/unlisted,
+  rating and issuer type, and how much of it is priced by model rather than
+  by trades. Buy a valuation feed if model-priced corporate bonds exceed
+  roughly 10% of the book's value, or if the consultant finds the model
+  prices unreliable in review. Corporate bonds held *inside debt mutual
+  funds* don't need the feed: their value comes from the fund's daily NAV.
 - **Second:** an authorised market data vendor, if intraday prices or
   guaranteed data quality are needed.
 
@@ -474,25 +504,34 @@ history).
 
 ## 9. Compliance considerations
 
-### 9.1 Advisor's registration
+### 9.1 The consultant is a Mutual Fund Distributor (decided)
 
-The consultant's SEBI registration determines what Kosh may help with:
-- **SEBI-registered Investment Adviser (RIA):** may give advice; must keep
-  records of advice and its rationale, a risk profile for each client and a
-  suitability assessment. Kosh's plans, audit log and risk profile fields
-  support this.
-- **Mutual Fund Distributor (MFD):** may not charge for advice; may only
-  give incidental advice on products they distribute. Kosh should then be
-  presented as a portfolio *information* tool.
+The consultant is an **AMFI-registered Mutual Fund Distributor (MFD)**, not
+a SEBI-registered Investment Adviser (RIA). Under SEBI's Investment Adviser
+Regulations and the AMFI code of conduct, an MFD earns commission from fund
+houses, may give only advice that is *incidental* to the products they
+distribute, may not charge clients a fee for advice, and may not call
+themselves an "adviser" or "wealth adviser". This shapes the product:
 
-**Action:** confirm the registration type with the consultant before
-finalising scope (Open question Q1).
+| Area | What Kosh does |
+|---|---|
+| **Positioning** | Kosh is a portfolio information, reporting and what-if tool for the distributor. No screen, export or LLM output recommends buying or selling anything. |
+| **Wording** | UI and exports use "portfolio review", "what-if", "scenario", "impact"; never "advice", "recommendation" or "adviser". Exports show the consultant as "AMFI-registered Mutual Fund Distributor, ARN-XXXX". |
+| **What-if planner** | Only models changes the consultant or client enters, or a target allocation the client has chosen. Kosh never generates a list of what to sell. |
+| **Disclaimer** | Every export and client-facing view carries a standard disclaimer (wording to be reviewed by a compliance professional): not investment advice; mutual fund investments are subject to market risks; tax estimates are indicative and should be confirmed with a tax professional. |
+| **Non-MF products** | Distributing bonds or stocks needs separate arrangements (e.g. being an Authorised Person of a stock broker, or partnering with a SEBI-registered online bond platform). Kosh *tracks and reports* these holdings either way; it does not imply he advises on them. See Q10. |
+| **Fee model** | Kosh has no billing or advisory-fee features. |
+| **Records** | The audit log (F8) records every what-if and export, which helps show that the consultant provided information rather than paid advice. |
 
-### 9.2 Automated advice
+**If the consultant later registers as an RIA**, the same design extends to
+advice: add advice records, suitability assessments, and fee billing. The
+data model does not need to change.
 
-The MVP keeps a human in the loop: Kosh shows exposures, impacts and tax
-consequences, and the advisor decides. LLM-generated summaries are labelled
-as such and link to their sources.
+### 9.2 Human in the loop
+
+Kosh shows exposures, impacts and tax consequences; people decide. Any
+LLM-generated text is labelled as such, links to its sources, and is
+checked against the wording rules in §9.1.
 
 ---
 
@@ -521,7 +560,7 @@ as such and link to their sources.
 |---|---|---|---|
 | M0 | Foundations | Repo, CI, data model, auth, instrument master seed | Advisor can log in; ISIN master loaded |
 | M1 | Import | F1, F2 (MF CAS + depository CAS + manual cost lots) | 10 real (anonymised) client statements import and reconcile |
-| M2 | Valuation | F3, F4 with daily EOD jobs (AMFI, bhavcopy, FBIL, model bond pricing) | All holdings valued daily; attribution matches statement values within tolerance |
+| M2 | Valuation | F3, F4 with daily EOD jobs (AMFI, bhavcopy, FBIL, model bond pricing); bond exposure report (§5.5) | All holdings valued daily; attribution matches statement values within tolerance; bond feed decision made |
 | M3 | Tax | F6 engine + planner + exports, CA-reviewed test cases | CA signs off on 30+ worked examples |
 | M4 | Impact | F5 event feeds, exposure mapping, scenarios, event inbox | Advisor uses the morning review (W3) for 2 weeks |
 | M5 | Pilot | Fixes, F7 alerts (P1), hardening, backups | Advisor runs their whole book on Kosh |
@@ -532,15 +571,17 @@ as such and link to their sources.
 
 | # | Question | Owner | Impact |
 |---|---|---|---|
-| Q1 | Is the consultant an RIA, an MFD, or both? | Consultant | Scope of planner, record-keeping, wording |
+| ~~Q1~~ | ~~Is the consultant an RIA, an MFD, or both?~~ **Answered: MFD.** See §9.1. | — | — |
 | Q2 | How many clients, and roughly how many holdings per client? | Consultant | Performance targets, pricing |
-| Q3 | Which brokers do clients use? (for tradebook import of cost basis) | Consultant | F2.6 parsers to build first |
-| Q4 | How much of the book is in corporate bonds, and which issuers/types (PSU, NBFC, perpetuals, unlisted)? | Consultant | Whether paid bond valuation is needed early |
+| Q3 | Which brokers do clients use? **Unknown; Kosh will measure it** from the first CAS imports (F2.6 depository participant report). | Kosh data, M1 | Order of broker-specific parsers |
+| Q4 | How much of the book is in corporate bonds, and of what type (PSU, NBFC, perpetual, unlisted)? **Unknown; Kosh will measure it** with the bond exposure report at M2. | Kosh data, M2 | Whether to buy a paid bond valuation feed (decision rule in §5.5) |
 | Q5 | Holdings outside CAS: FDs, PPF, NPS, PMS, AIFs, insurance, real estate. Are they needed in the MVP (manual entry)? | Consultant | Scope of F1/F4 |
 | Q6 | Any NRI clients? How many? | Consultant | Tax engine scope |
 | Q7 | Will the advisor's staff use Kosh? | Consultant | Roles and permissions |
 | Q8 | Which reports does he share with clients today, and in what format? | Consultant | F6.6 export design |
 | Q9 | Hosting and budget constraints | Product owner | Architecture, vendor choices |
+| Q10 | How does the consultant arrange bond and stock investments for clients (Authorised Person of a broker, online bond platform partner, or clients invest on their own)? | Consultant | Positioning of non-MF holdings in exports; possible platform data imports |
+| Q11 | Does he want commission/trail tracking by ARN (which AUM is under his ARN vs. bought direct or via others)? | Consultant | Possible P1 feature using distributor feeds |
 
 ---
 
@@ -559,4 +600,7 @@ as such and link to their sources.
   1% change in yield.
 - **XIRR:** annualised return that accounts for the timing of cash flows.
 - **RIA / MFD:** SEBI Registered Investment Adviser / Mutual Fund Distributor.
+- **ARN:** AMFI Registration Number, the identifier of a registered MFD.
+- **RTA:** Registrar and Transfer Agent (CAMS, KFintech), which keeps
+  mutual fund investor records.
 - **DPDP Act:** Digital Personal Data Protection Act, 2023.
