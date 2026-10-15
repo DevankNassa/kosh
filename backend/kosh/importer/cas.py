@@ -79,7 +79,7 @@ def parse_pdf(content: bytes, password: str):
             msg = str(e)
             if "password" in msg.lower() or "decrypt" in msg.lower():
                 raise ImportErrorUser("Could not open the PDF: wrong password? CAS passwords are "
-                                      "usually the PAN (CAMS/KFintech) or set by you (NSDL/CDSL).") from e
+                                      "the one you set when requesting it (CAMS/KFintech) or usually your PAN (NSDL/CDSL).") from e
             raise ImportErrorUser(f"Could not read this statement: {msg[:200]}") from e
     finally:
         try:

@@ -1,0 +1,83 @@
+{
+ "yield_curve": {
+  "asof": "2026-10-15",
+  "points": [
+   [
+    0.25,
+    0.0629716338612343
+   ],
+   [
+    1,
+    0.0644716338612343
+   ],
+   [
+    2,
+    0.0669716338612343
+   ],
+   [
+    3,
+    0.0684716338612343
+   ],
+   [
+    5.0,
+    0.0704716338612343
+   ],
+   [
+    10.0,
+    0.06968437651230489
+   ],
+   [
+    15.0,
+    0.07076258947490716
+   ],
+   [
+    20.0,
+    0.07382381080324195
+   ],
+   [
+    30.0,
+    0.0765679329903833
+   ],
+   [
+    40.0,
+    0.07591771361239807
+   ]
+  ],
+  "source": "Indicative: derived from 25 G-sec trades on NSE"
+ },
+ "indices": {
+  "asof": "2026-10-15",
+  "items": [
+   {
+    "name": "Nifty 50",
+    "close": 22997.35,
+    "change_pct": 1.66
+   },
+   {
+    "name": "Nifty Bank",
+    "close": 55810.5,
+    "change_pct": 0.89
+   },
+   {
+    "name": "Nifty Financial Services",
+    "close": 25364.2,
+    "change_pct": 1.67
+   },
+   {
+    "name": "Nifty IT",
+    "close": 30719.8,
+    "change_pct": 1.82
+   },
+   {
+    "name": "Nifty 10 yr Benchmark G-Sec",
+    "close": 2607.19,
+    "change_pct": 0.15
+   },
+   {
+    "name": "India VIX",
+    "close": 14.03,
+    "change_pct": -4.1
+   }
+  ]
+ }
+}
