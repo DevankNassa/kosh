@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 from typing import Iterator
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from . import config
@@ -37,10 +37,30 @@ def get_engine():
     return _engine
 
 
+def _add_missing_columns(engine) -> None:
+    """No migration framework here (SQLite, showcase MVP) — `create_all` only
+    creates tables that don't exist yet, so a new nullable column on an
+    existing table (e.g. Event.actual_tags) needs this to reach a database
+    that predates it."""
+    insp = inspect(engine)
+    existing_tables = set(insp.get_table_names())
+    with engine.begin() as conn:
+        for table in Base.metadata.tables.values():
+            if table.name not in existing_tables:
+                continue
+            have = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in have or col.primary_key:
+                    continue
+                conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {col.type.compile(engine.dialect)}'))
+
+
 def init_db() -> None:
     from . import models  # noqa: F401  (register tables)
 
-    Base.metadata.create_all(get_engine())
+    engine = get_engine()
+    Base.metadata.create_all(engine)
+    _add_missing_columns(engine)
 
 
 def reset_engine(url: str | None = None) -> None:

@@ -140,6 +140,17 @@ class Price(Base):
     level: Mapped[str] = mapped_column(String(10), default="observed")  # observed | model | stale
 
 
+class IndexPrice(Base):
+    """Daily closes for NSE benchmark/sectoral indices (not individual
+    instruments) — the real historical series behind historical scenarios
+    and the market/event chart (see impact/historical.py)."""
+
+    __tablename__ = "index_prices"
+    name: Mapped[str] = mapped_column(String(80), primary_key=True)
+    date: Mapped[date] = mapped_column(Date, primary_key=True)
+    close: Mapped[float] = mapped_column(Float)
+
+
 class Transaction(Base):
     __tablename__ = "transactions"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -185,6 +196,10 @@ class Event(Base):
     # what the event touches, e.g. {"yield_shift_bps": -25} or
     # {"isins": ["INE..."], "spread_bps": 75} or {"sector": "Financial Services", "equity_move_pct": -3}
     tags: Mapped[dict] = mapped_column(JSON, default=dict)
+    # the real, realized shock computed once the event has aged (see
+    # marketdata.refresh); None until then. `tags` above is left as the
+    # consultant's original estimate.
+    actual_tags: Mapped[Optional[dict]] = mapped_column(JSON)
     is_sample: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 

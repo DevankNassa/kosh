@@ -240,6 +240,31 @@ def rating_bucket(rating: Optional[str]) -> str:
     return "Below BBB"
 
 
+# Instrument.sector (from the NSE Nifty 500 industry classification) → the
+# NSE sectoral index that tracks it, for real-data scenarios and charting.
+# Sectors not listed here have no dedicated index; they're only compared
+# against the broad-market baseline.
+SECTOR_INDEX = {
+    "Oil Gas & Consumable Fuels": "Nifty Oil & Gas",
+    "Information Technology": "Nifty IT",
+    "Financial Services": "Nifty Financial Services",
+    "Automobile and Auto Components": "Nifty Auto",
+    "Metals & Mining": "Nifty Metal",
+    "Healthcare": "Nifty Healthcare Index",
+    "Fast Moving Consumer Goods": "Nifty FMCG",
+    "Realty": "Nifty Realty",
+    "Power": "Nifty Power",
+    "Consumer Durables": "Nifty Consumer Durables",
+    "Chemicals": "Nifty Chemicals",
+    "Telecommunication": "Nifty Telecommunications",
+    "Media Entertainment & Publication": "Nifty Media",
+    "Construction": "Nifty Construction",
+}
+
+BROAD_MARKET_INDEX = "Nifty 500"
+DEBT_INDEX = "Nifty 10 yr Benchmark G-Sec"
+
+
 def equity_share(asset_class: str, sub_class: Optional[str]) -> float:
     """Approximate unhedged equity exposure, used for market-move scenarios."""
     if asset_class == "equity":

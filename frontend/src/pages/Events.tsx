@@ -77,10 +77,17 @@ function EventDetail({ id, onDeleted }: { id: number; onDeleted: () => void }) {
         <h2 style={{ margin: "8px 0 4px", fontSize: 18 }}>{e.title}</h2>
         {e.summary && <p className="muted">{e.summary}</p>}
         <div className="small faint">
-          Modelled as: {describeShock(e.tags || {})}
+          Estimated at the time: {describeShock(e.tags || {})}
           {e.source_url && <> · <a href={e.source_url} target="_blank" rel="noreferrer">Source</a></>}
           {e.source && !e.source_url && <> · {e.source}</>}
         </div>
+        {e.actual_tags ? (
+          <div className="small faint">
+            What actually happened: <b>{describeShock(e.actual_tags)}</b> — the figures below use this, not the original estimate.
+          </div>
+        ) : (
+          !e.is_sample && <div className="small faint">What actually happened: not yet known — Kosh checks ~5 trading days after the event.</div>
+        )}
         <div className="row" style={{ marginTop: 8 }}>
           <span className="spacer" />
           <button className="ghost danger" onClick={() => api.del(`/api/events/${id}`).then(onDeleted)}>Delete event</button>

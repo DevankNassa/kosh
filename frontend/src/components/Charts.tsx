@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { ASSET_LABEL, inrc, pct } from "../format";
+import { ASSET_LABEL, date as fmtDate, inrc, pct } from "../format";
 import { useTooltip } from "./ui";
 
 const ORDER = ["equity", "debt", "hybrid", "gold", "other"];
@@ -222,6 +222,112 @@ export function LineChart({
         ))}
         <text x={sx(last[0]) - 6} y={sy(last[1]) - 10} textAnchor="end" fontSize={11} fill="var(--text)">{yFormat(last[1])}</text>
       </svg>
+      {tt.node}
+    </div>
+  );
+}
+
+// Default 2-series colour (a single subject vs the muted broad-market baseline).
+const DEFAULT_COLORS = ["var(--s-equity)", "var(--text-3)"];
+
+/** Multiple date-indexed series (rebased to a common base, e.g. 100), with an
+ * optional vertical marker for an event date — the market/event chart and the
+ * Scenarios "fund families" chart. `colors` lets a caller assign colour by the
+ * series' *role* (e.g. always-orange debt, always-yellow gold) rather than by
+ * position, since not every series is present for every event.
+ * `compact` drops axes/legend for use as a small-multiple tile. */
+export function MultiLineChart({
+  series,
+  eventDate,
+  height = 260,
+  colors = DEFAULT_COLORS,
+  compact = false,
+}: {
+  series: { label: string; points: { date: string; value: number }[] }[];
+  eventDate?: string | null;
+  height?: number;
+  colors?: string[];
+  compact?: boolean;
+}) {
+  const tt = useTooltip();
+  const W = 720;
+  const H = height;
+  const pad = compact ? { l: 4, r: 4, t: 4, b: 4 } : { l: 44, r: 16, t: 16, b: 28 };
+  const allPoints = series.flatMap((s) => s.points);
+  if (!allPoints.length) return null;
+  const toTs = (d: string) => new Date(d).getTime();
+  const xs = allPoints.map((p) => toTs(p.date));
+  const ys = allPoints.map((p) => p.value);
+  const x0 = Math.min(...xs);
+  const x1 = Math.max(...xs);
+  const yMin = Math.min(...ys, 100);
+  const yMax = Math.max(...ys, 100);
+  const span = Math.max(yMax - yMin, 1);
+  const lo = yMin - span * 0.1;
+  const hi = yMax + span * 0.1;
+  const sx = (x: number) => pad.l + ((x - x0) / (x1 - x0 || 1)) * (W - pad.l - pad.r);
+  const sy = (y: number) => pad.t + (1 - (y - lo) / (hi - lo)) * (H - pad.t - pad.b);
+  const yTicks = Array.from({ length: 4 }, (_, i) => lo + ((hi - lo) * (i + 0.5)) / 4);
+  const dates = Array.from(new Set(allPoints.map((p) => p.date))).sort();
+  const xTicks = [dates[0], dates[Math.floor(dates.length / 2)], dates[dates.length - 1]];
+  const evX = eventDate ? sx(toTs(eventDate)) : null;
+  return (
+    <div style={{ position: "relative" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Line chart">
+        {!compact && yTicks.map((t) => (
+          <g key={t}>
+            <line x1={pad.l} x2={W - pad.r} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" strokeWidth={1} />
+            <text x={pad.l - 8} y={sy(t) + 4} textAnchor="end" fontSize={11} fill="var(--text-3)">{t.toFixed(0)}</text>
+          </g>
+        ))}
+        {!compact && xTicks.map((d) => (
+          <text key={d} x={sx(toTs(d))} y={H - pad.b + 16} textAnchor="middle" fontSize={11} fill="var(--text-3)">{fmtDate(d)}</text>
+        ))}
+        {compact && (
+          <line x1={pad.l} x2={W - pad.r} y1={sy(100)} y2={sy(100)} stroke="var(--grid)" strokeWidth={1} strokeDasharray="2 2" />
+        )}
+        {evX != null && (
+          <>
+            <line x1={evX} x2={evX} y1={pad.t} y2={H - pad.b} stroke="var(--down)" strokeWidth={1.5} strokeDasharray="4 3" />
+            {!compact && <text x={evX} y={pad.t - 4} textAnchor="middle" fontSize={10} fill="var(--down)">Event</text>}
+          </>
+        )}
+        {series.map((s, i) => {
+          const path = s.points.map((p, j) => `${j ? "L" : "M"}${sx(toTs(p.date)).toFixed(1)},${sy(p.value).toFixed(1)}`).join(" ");
+          return <path key={s.label} d={path} fill="none" stroke={colors[i % colors.length]} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />;
+        })}
+        {!compact && dates.map((d) => (
+          <rect
+            key={d}
+            x={sx(toTs(d)) - 4}
+            y={pad.t}
+            width={8}
+            height={H - pad.t - pad.b}
+            fill="transparent"
+            onMouseMove={(e) =>
+              tt.show(
+                e,
+                <>
+                  <div className="t-title">{fmtDate(d)}</div>
+                  {series.map((s) => {
+                    const p = s.points.find((pt) => pt.date === d);
+                    return p ? <div key={s.label}>{s.label}: {p.value.toFixed(1)}</div> : null;
+                  })}
+                </>,
+              )
+            }
+            onMouseLeave={tt.hide}
+          />
+        ))}
+      </svg>
+      {!compact && (
+        <div className="legend">
+          {series.map((s, i) => (
+            <span key={s.label}><i className="dot" style={{ background: colors[i % colors.length] }} />{s.label}</span>
+          ))}
+          {eventDate && <span><i className="dot" style={{ background: "var(--down)" }} />Event date</span>}
+        </div>
+      )}
       {tt.node}
     </div>
   );

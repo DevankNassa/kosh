@@ -1,15 +1,17 @@
 """Command line: `python -m kosh <command>`.
 
-  serve      start the app (first run: loads market data and demo clients)
-  refresh    fetch today's market data
-  seed       add the demo clients and sample scenarios
-  snapshot   save market data for the demo instruments (offline fallback)
+  serve             start the app (first run: loads market data and demo clients)
+  refresh            fetch today's market data
+  seed               add the demo clients and sample scenarios
+  snapshot           save market data for the demo instruments (offline fallback)
+  backfill-indices   fetch historical sector/benchmark index closes for a date range
 """
 
 import argparse
 import json
 import logging
 import webbrowser
+from datetime import date
 
 from sqlalchemy import func, select
 
@@ -45,6 +47,9 @@ def main() -> None:
     sub.add_parser("refresh")
     sub.add_parser("seed")
     sub.add_parser("snapshot")
+    bp = sub.add_parser("backfill-indices")
+    bp.add_argument("--from", dest="start", required=True, help="YYYY-MM-DD")
+    bp.add_argument("--to", dest="end", required=True, help="YYYY-MM-DD")
     args = ap.parse_args()
     init_db()
 
@@ -81,6 +86,13 @@ def main() -> None:
         with session_scope() as s:
             write_snapshot(s, set(MF.values()) | set(EQ.values()) | set(BONDS.values()))
         print("Snapshot written")
+    elif args.cmd == "backfill-indices":
+        from .analytics.classify import BROAD_MARKET_INDEX, SECTOR_INDEX
+        from .marketdata.backfill import backfill_indices
+        start, end = date.fromisoformat(args.start), date.fromisoformat(args.end)
+        names = sorted(set(SECTOR_INDEX.values()) | {BROAD_MARKET_INDEX})
+        with session_scope() as s:
+            print(json.dumps(backfill_indices(s, names, start, end)))
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ import Clients from "./pages/Clients";
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
 import ImportPage from "./pages/Import";
+import Market from "./pages/Market";
 import Scenarios from "./pages/Scenarios";
 import Settings from "./pages/Settings";
 
@@ -35,6 +36,7 @@ const NAV = [
   { to: "/clients", label: "Clients", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.9M16 4.1a3 3 0 0 1 0 5.8" },
   { to: "/events", label: "Events & impact", icon: "M12 3v18M3 12h18M5.6 5.6l12.8 12.8" },
   { to: "/scenarios", label: "Scenarios", icon: "M4 19V5M4 19h16M8 15l4-4 3 3 5-6" },
+  { to: "/market", label: "Market & event impact", icon: "M3 3v18h18M7 15l4-5 3 3 5-7" },
   { to: "/import", label: "Import statement", icon: "M12 3v12M7 10l5 5 5-5M5 21h14" },
   { to: "/settings", label: "Settings & data", icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" },
 ];
@@ -99,6 +101,7 @@ export default function App() {
               <Route path="/events" element={<Events />} />
               <Route path="/events/:id" element={<Events />} />
               <Route path="/scenarios" element={<Scenarios />} />
+              <Route path="/market" element={<Market />} />
               <Route path="/import" element={<ImportPage />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>

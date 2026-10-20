@@ -4,7 +4,7 @@ index closes. Falls back to the bundled snapshot when offline."""
 import csv
 import json
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Iterable
 
 from sqlalchemy import func, select
@@ -12,10 +12,12 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
 from .. import config, settings_store
-from ..analytics.classify import classify_exchange, classify_mf
-from ..models import Instrument, Price
+from ..analytics.classify import SECTOR_INDEX, BROAD_MARKET_INDEX, DEBT_INDEX, classify_exchange, classify_mf
+from ..models import Event, IndexPrice, Instrument, Price
 from . import amfi, nse
 from .curve import DEFAULT_CURVE, derive_curve
+
+TRACKED_INDICES = sorted(set(SECTOR_INDEX.values()) | {BROAD_MARKET_INDEX, DEBT_INDEX})
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +69,15 @@ def upsert_prices(session: Session, rows: list[dict]) -> None:
         session.execute(stmt.on_conflict_do_update(
             index_elements=["isin", "date"],
             set_={"price": stmt.excluded.price, "source": stmt.excluded.source, "level": stmt.excluded.level},
+        ))
+
+
+def upsert_index_prices(session: Session, rows: list[dict]) -> None:
+    table = IndexPrice.__table__
+    for chunk in _chunks(rows):
+        stmt = insert(table).values(chunk)
+        session.execute(stmt.on_conflict_do_update(
+            index_elements=["name", "date"], set_={"close": stmt.excluded.close},
         ))
 
 
@@ -149,10 +160,44 @@ def _refresh_indices(session: Session, asof: date) -> dict:
     wanted = ["Nifty 50", "Nifty Bank", "Nifty Midcap 100", "Nifty Smallcap 100",
               "Nifty Financial Services", "Nifty IT", "Nifty 10 yr Benchmark G-Sec", "India VIX"]
     rows = nse.fetch_index_closes(asof)
-    pick = [r for r in rows if r["name"] in wanted]
+    by_name = {r["name"]: r for r in rows}
+    pick = [by_name[n] for n in wanted if n in by_name]
     pick.sort(key=lambda r: wanted.index(r["name"]))
     settings_store.put(session, "indices", {"asof": asof, "items": pick})
-    return {"ok": bool(pick), "count": len(pick)}
+    # also append today's close for every index used by real-data scenarios
+    # and the market/event chart, building up real history for free over time
+    tracked = [dict(name=r["name"], date=asof, close=r["close"])
+               for r in rows if r["name"] in TRACKED_INDICES]
+    upsert_index_prices(session, tracked)
+    return {"ok": bool(pick), "count": len(pick), "tracked": len(tracked)}
+
+
+def _add_trading_days(d: date, n: int) -> date:
+    while n > 0:
+        d += timedelta(days=1)
+        if d.weekday() < 5:
+            n -= 1
+    return d
+
+
+def _true_up_events(session: Session, today: date) -> dict:
+    """Once a logged (non-sample) event is 5+ trading days old, replace the
+    consultant's guess with what actually happened, from real index data."""
+    from ..impact.historical import real_shock
+
+    updated = 0
+    rows = session.scalars(select(Event).where(Event.is_sample.is_(False), Event.actual_tags.is_(None)))
+    for e in rows:
+        window_end = _add_trading_days(e.date, 5)
+        if window_end > today:
+            continue
+        flt = (e.tags or {}).get("filter") if isinstance(e.tags, dict) else None
+        sector = flt.get("sector") if isinstance(flt, dict) else None
+        shock = real_shock(session, sector, e.date, window_end)
+        if shock:
+            e.actual_tags = shock
+            updated += 1
+    return {"ok": True, "updated": updated}
 
 
 def refresh_market_data(session: Session, today: date | None = None) -> dict:
@@ -181,6 +226,13 @@ def refresh_market_data(session: Session, today: date | None = None) -> dict:
     if settings_store.get(session, "yield_curve") is None:
         settings_store.put(session, "yield_curve", {"asof": None, "points": DEFAULT_CURVE,
                                                      "source": "Default curve"})
+    try:
+        status["events_trued_up"] = _true_up_events(session, today)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        log.warning("event true-up failed: %s", e)
+        status["events_trued_up"] = {"ok": False, "error": str(e)[:300]}
     status["finished"] = datetime.now().isoformat(timespec="seconds")
     settings_store.put(session, "market_status", status)
     session.commit()

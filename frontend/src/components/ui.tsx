@@ -30,6 +30,21 @@ export function Loading({ label = "Loading…" }: { label?: string }) {
   );
 }
 
+/** Keeps the previous content visible (dimmed) with a spinner on top while a
+ * fresh fetch is in flight, instead of the delay looking like nothing changed. */
+export function BusyOverlay({ busy, children }: { busy: boolean; children: ReactNode }) {
+  return (
+    <div className={"busy-wrap" + (busy ? " is-busy" : "")}>
+      {children}
+      {busy && (
+        <div className="busy-indicator">
+          <span className="spinner lg" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ErrorNote({ error }: { error: string | null }) {
   if (!error) return null;
   return <div className="notice bad">{error}</div>;

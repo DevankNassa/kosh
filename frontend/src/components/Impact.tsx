@@ -12,7 +12,7 @@ export type Shock = {
   equity_move_pct?: number;
   gold_move_pct?: number;
   default_recovery_pct?: number;
-  filter?: { isins?: string[]; issuer_keys?: string[]; sector?: string };
+  filter?: { isins?: string[]; issuer_keys?: string[]; sector?: string; not_sector?: string };
 };
 
 const RATINGS = ["AAA", "AA", "A", "BBB", "Below BBB", "Unrated / unknown"];
@@ -122,7 +122,7 @@ export function ShockBuilder({ value, onChange }: { value: Shock; onChange: (s: 
   );
 }
 
-export function describeShock(s: Shock): string {
+function describeOneShock(s: Shock): string {
   const parts = [];
   if (s.yield_shift_bps) parts.push(`yields ${s.yield_shift_bps > 0 ? "+" : ""}${s.yield_shift_bps} bps`);
   if (s.spread_bps) parts.push(`spreads ${s.spread_bps > 0 ? "+" : ""}${s.spread_bps} bps`);
@@ -130,8 +130,12 @@ export function describeShock(s: Shock): string {
   if (s.gold_move_pct) parts.push(`gold ${s.gold_move_pct > 0 ? "+" : ""}${s.gold_move_pct}%`);
   if (s.default_recovery_pct != null) parts.push(`default, ${s.default_recovery_pct}% recovery`);
   const f = s.filter;
-  const scope = f?.sector ? ` · ${f.sector}` : f?.issuer_keys?.length ? ` · ${f.issuer_keys.length} issuer(s)` : f?.isins?.length ? " · selected securities" : " · market-wide";
+  const scope = f?.sector ? ` · ${f.sector}` : f?.issuer_keys?.length ? ` · ${f.issuer_keys.length} issuer(s)` : f?.isins?.length ? " · selected securities" : f?.not_sector ? ` · rest of the market (ex ${f.not_sector})` : " · market-wide";
   return (parts.join(", ") || "no change") + scope;
+}
+
+export function describeShock(s: Shock | Shock[]): string {
+  return Array.isArray(s) ? s.map(describeOneShock).join("; ") : describeOneShock(s);
 }
 
 /** Book-level impact: totals, per-client bars, and expandable holdings. */

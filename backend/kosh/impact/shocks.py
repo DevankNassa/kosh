@@ -12,20 +12,35 @@ A *shock* describes what moved and what it touches:
       "filter": {"isins": [...], "issuer_keys": ["INE053F"], "sector": "Financial Services"}
     }
 
-With no filter the shock is market-wide. Events store a shock in their tags."""
+With no filter the shock is market-wide. A filter of {"not_sector": "X"} matches
+everything *outside* sector X — used to apply a market-wide shock to the rest of
+the book alongside a sector-specific one (see impact/historical.py).
+
+A "shock" can also be a list of such dicts, applied and summed together (e.g. a
+sector-specific move plus a market-wide move for everything else). Events store
+a shock (dict or list) in their tags."""
 
 from collections import defaultdict
-from typing import Optional
+from typing import Optional, Union
 
 from ..analytics.bonds import price_change_pct
 from ..analytics.classify import equity_share, rating_bucket
 from ..analytics.portfolio import BOND_KINDS, Holding, Portfolio
+
+Shock = dict
+ShockLike = Union[Shock, list[Shock]]
+
+
+def _as_list(shock: ShockLike) -> list[Shock]:
+    return shock if isinstance(shock, list) else [shock]
 
 
 def _matches(h: Holding, flt: Optional[dict]) -> bool:
     if not flt:
         return True
     ins = h.instrument
+    if "not_sector" in flt:
+        return not (ins.sector and ins.sector.lower() == flt["not_sector"].lower())
     if flt.get("isins") and ins.isin in flt["isins"]:
         return True
     if flt.get("issuer_keys") and ins.isin[:7] in flt["issuer_keys"]:
@@ -37,8 +52,8 @@ def _matches(h: Holding, flt: Optional[dict]) -> bool:
     return False
 
 
-def holding_impact(h: Holding, shock: dict) -> tuple[float, list[str]]:
-    """Estimated ₹ change for one holding, with a short explanation."""
+def _single_holding_impact(h: Holding, shock: Shock) -> tuple[float, list[str]]:
+    """Estimated ₹ change for one holding under one shock, with a short explanation."""
     ins = h.instrument
     v = h.value
     if not v:
@@ -81,16 +96,30 @@ def holding_impact(h: Holding, shock: dict) -> tuple[float, list[str]]:
     return impact, why
 
 
-def exposed(h: Holding, shock: dict) -> bool:
-    """Does the shock touch this holding at all (even if not quantified)?"""
+def holding_impact(h: Holding, shock: ShockLike) -> tuple[float, list[str]]:
+    """Estimated ₹ change for one holding, with a short explanation."""
+    total, why = 0.0, []
+    for s in _as_list(shock):
+        imp, w = _single_holding_impact(h, s)
+        total += imp
+        why.extend(w)
+    return total, why
+
+
+def _single_exposed(h: Holding, shock: Shock) -> bool:
     flt = shock.get("filter")
     if flt:
         return _matches(h, flt)
-    impact, _ = holding_impact(h, shock)
+    impact, _ = _single_holding_impact(h, shock)
     return abs(impact) > 0.005
 
 
-def portfolio_impact(p: Portfolio, shock: dict) -> dict:
+def exposed(h: Holding, shock: ShockLike) -> bool:
+    """Does the shock touch this holding at all (even if not quantified)?"""
+    return any(_single_exposed(h, s) for s in _as_list(shock))
+
+
+def portfolio_impact(p: Portfolio, shock: ShockLike) -> dict:
     rows = []
     total = 0.0
     exposure = 0.0
@@ -115,7 +144,7 @@ def portfolio_impact(p: Portfolio, shock: dict) -> dict:
     }
 
 
-def book_impact(portfolios: list[Portfolio], shock: dict) -> dict:
+def book_impact(portfolios: list[Portfolio], shock: ShockLike) -> dict:
     clients = [portfolio_impact(p, shock) for p in portfolios]
     clients = [c for c in clients if c["holdings"]]
     clients.sort(key=lambda c: c["impact"])

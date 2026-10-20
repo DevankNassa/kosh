@@ -1,6 +1,7 @@
 """HTTP API (FastAPI). Also serves the built web app from kosh/web_dist."""
 
 import base64
+import datetime
 import io
 import logging
 import secrets
@@ -106,7 +107,8 @@ def _client_dict(c: Client) -> dict:
 
 def _event_dict(e: Event) -> dict:
     return {"id": e.id, "date": e.date, "kind": e.kind, "title": e.title, "summary": e.summary,
-            "source": e.source, "source_url": e.source_url, "tags": e.tags, "is_sample": e.is_sample}
+            "source": e.source, "source_url": e.source_url, "tags": e.tags,
+            "actual_tags": e.actual_tags, "is_sample": e.is_sample}
 
 
 # ---------------------------------------------------------------- status & settings
@@ -391,7 +393,11 @@ def set_cost_basis(client_id: int, body: CostBasisIn, s: Session = Depends(get_s
 class EventIn(BaseModel):
     title: str
     kind: str = "market"
-    date: Optional[date] = None
+    # qualified as datetime.date, not bare `date`: pydantic v2 resolves a field's
+    # own type hint using the class namespace, and a field named the same as its
+    # type (with a default) shadows the type with the default value (None here),
+    # silently turning `Optional[date]` into `Optional[NoneType]`
+    date: Optional[datetime.date] = None
     summary: Optional[str] = None
     source: Optional[str] = None
     source_url: Optional[str] = None
@@ -403,9 +409,9 @@ def list_events(s: Session = Depends(get_session)):
     ps = _all_portfolios(s)
     out = []
     for e in s.scalars(select(Event).order_by(Event.date.desc(), Event.id.desc())):
-        bi = book_impact(ps, e.tags or {})
+        bi = book_impact(ps, e.actual_tags or e.tags or {})
         out.append({**_event_dict(e), "clients_exposed": bi["clients_exposed"], "exposure": bi["exposure"],
-                    "impact": bi["impact"]})
+                    "impact": bi["impact"], "impact_basis": "actual" if e.actual_tags else "estimated"})
     return out
 
 
@@ -434,12 +440,96 @@ def event_impact(event_id: int, s: Session = Depends(get_session)):
     e = s.get(Event, event_id)
     if e is None:
         raise HTTPException(404, "Event not found")
-    return {"event": _event_dict(e), **book_impact(_all_portfolios(s), e.tags or {})}
+    basis = "actual" if e.actual_tags else "estimated"
+    return {"event": _event_dict(e), "impact_basis": basis,
+            **book_impact(_all_portfolios(s), e.actual_tags or e.tags or {})}
 
 
 @app.post("/api/scenario")
 def scenario(shock: dict[str, Any], s: Session = Depends(get_session)):
     return book_impact(_all_portfolios(s), shock)
+
+
+@app.get("/api/scenario/historical")
+def historical_scenarios(s: Session = Depends(get_session)):
+    from ..impact.historical import HISTORICAL_EVENTS, real_shock
+    out = []
+    for ev in HISTORICAL_EVENTS:
+        shock = real_shock(s, ev.sector, ev.start, ev.end)
+        out.append({"id": ev.id, "label": ev.label, "start": ev.start, "end": ev.end,
+                    "sector": ev.sector, "shock": shock})
+    return out
+
+
+@app.post("/api/scenario/historical/{event_id}")
+def apply_historical_scenario(event_id: str, s: Session = Depends(get_session)):
+    from ..impact.historical import HISTORICAL_EVENTS, real_shock
+    ev = next((e for e in HISTORICAL_EVENTS if e.id == event_id), None)
+    if ev is None:
+        raise HTTPException(404, "Historical event not found")
+    shock = real_shock(s, ev.sector, ev.start, ev.end)
+    return {"historical_event": {"id": ev.id, "label": ev.label, "start": ev.start, "end": ev.end},
+            **book_impact(_all_portfolios(s), shock)}
+
+
+@app.get("/api/scenario/historical/{event_id}/chart")
+def historical_scenario_chart(event_id: str, mode: str = "families", days_before: int = 20, days_after: int = 20,
+                               s: Session = Depends(get_session)):
+    from datetime import timedelta
+
+    from ..impact.historical import HISTORICAL_EVENTS, family_series, sector_small_multiples
+    ev = next((e for e in HISTORICAL_EVENTS if e.id == event_id), None)
+    if ev is None:
+        raise HTTPException(404, "Historical event not found")
+    start, end = ev.start - timedelta(days=days_before), ev.end + timedelta(days=days_after)
+    event = {"id": ev.id, "label": ev.label, "start": ev.start, "end": ev.end, "sector": ev.sector}
+    if mode == "sectors":
+        return {"event": event, "mode": mode, "start": start, "end": end, **sector_small_multiples(s, start, end)}
+    return {"event": event, "mode": "families", "start": start, "end": end,
+            "series": family_series(s, ev.sector, start, end)}
+
+
+@app.get("/api/market/chart")
+def market_chart(sector: Optional[str] = None, event_id: Optional[int] = None,
+                  days_before: int = 30, days_after: int = 30, s: Session = Depends(get_session)):
+    from datetime import timedelta
+
+    from ..analytics.classify import BROAD_MARKET_INDEX, SECTOR_INDEX
+    from ..marketdata.backfill import backfill_indices
+    from ..models import IndexPrice
+
+    event = None
+    if event_id is not None:
+        e = s.get(Event, event_id)
+        if e is None:
+            raise HTTPException(404, "Event not found")
+        flt = (e.tags or {}).get("filter") if isinstance(e.tags, dict) else None
+        sector = sector or (flt.get("sector") if isinstance(flt, dict) else None)
+        event = {"id": e.id, "title": e.title, "date": e.date}
+        center = e.date
+    else:
+        center = market_asof(s)
+
+    start, end = center - timedelta(days=days_before), center + timedelta(days=days_after)
+    names = [BROAD_MARKET_INDEX]
+    sector_index = SECTOR_INDEX.get(sector) if sector else None
+    if sector_index:
+        names.append(sector_index)
+    backfill_indices(s, names, start, end)
+
+    series = {}
+    for name in names:
+        rows = s.scalars(select(IndexPrice).where(IndexPrice.name == name, IndexPrice.date.between(start, end))
+                          .order_by(IndexPrice.date))
+        pts = [(r.date, r.close) for r in rows]
+        if not pts:
+            series[name] = []
+            continue
+        base = pts[0][1]
+        series[name] = [{"date": d, "value": round(c / base * 100, 2)} for d, c in pts]
+
+    return {"event": event, "sector": sector, "sector_index": sector_index,
+            "market_index": BROAD_MARKET_INDEX, "start": start, "end": end, "series": series}
 
 
 @app.post("/api/clients/{client_id}/scenario")
