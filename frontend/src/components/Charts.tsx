@@ -192,8 +192,17 @@ export function LineChart({
             <text x={pad.l - 8} y={sy(t) + 4} textAnchor="end" fontSize={11} fill="var(--text-3)">{yFormat(t)}</text>
           </g>
         ))}
-        {xt.map((t) => (
-          <text key={t} x={sx(t)} y={H - pad.b + 16} textAnchor="middle" fontSize={11} fill="var(--text-3)">{xFormat(t)}</text>
+        {xt.map((t, i) => (
+          <text
+            key={t}
+            x={sx(t)}
+            y={H - pad.b + 16}
+            textAnchor={i === 0 ? "start" : i === xt.length - 1 ? "end" : "middle"}
+            fontSize={11}
+            fill="var(--text-3)"
+          >
+            {xFormat(t)}
+          </text>
         ))}
         {xLabel && <text x={(W + pad.l) / 2} y={H - 4} textAnchor="middle" fontSize={11} fill="var(--text-2)">{xLabel}</text>}
         <path d={path} fill="none" stroke="var(--s-equity)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
@@ -280,8 +289,17 @@ export function MultiLineChart({
             <text x={pad.l - 8} y={sy(t) + 4} textAnchor="end" fontSize={11} fill="var(--text-3)">{t.toFixed(0)}</text>
           </g>
         ))}
-        {!compact && xTicks.map((d) => (
-          <text key={d} x={sx(toTs(d))} y={H - pad.b + 16} textAnchor="middle" fontSize={11} fill="var(--text-3)">{fmtDate(d)}</text>
+        {!compact && xTicks.map((d, i) => (
+          <text
+            key={d}
+            x={sx(toTs(d))}
+            y={H - pad.b + 16}
+            textAnchor={i === 0 ? "start" : i === xTicks.length - 1 ? "end" : "middle"}
+            fontSize={11}
+            fill="var(--text-3)"
+          >
+            {fmtDate(d)}
+          </text>
         ))}
         {compact && (
           <line x1={pad.l} x2={W - pad.r} y1={sy(100)} y2={sy(100)} stroke="var(--grid)" strokeWidth={1} strokeDasharray="2 2" />
