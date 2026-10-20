@@ -10,6 +10,9 @@ CACHE_DIR = DATA_DIR / "cache"
 WEB_DIST = Path(__file__).resolve().parent / "web_dist"
 SNAPSHOT_DIR = Path(__file__).resolve().parent / "marketdata" / "snapshot"
 
+AUTH_USER = os.environ.get("KOSH_AUTH_USER")
+AUTH_PASS = os.environ.get("KOSH_AUTH_PASS")
+
 HTTP_TIMEOUT = 45.0
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "

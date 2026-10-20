@@ -68,6 +68,60 @@ start again from scratch.
 7. **Import statement.** Upload a real CAS PDF and its password. Kosh shows a
    preview with reconciliation before anything is saved.
 
+## Letting a client view it remotely
+
+Kosh has no login, so don't put it on the open internet as-is. This is the
+exact recipe used to demo it to a client over a free Cloudflare Tunnel.
+
+**One-time setup:**
+
+```bash
+# in the repo root — this file is git-ignored, never commit it
+cat > .kosh_auth.env <<'EOF'
+KOSH_AUTH_USER=client
+KOSH_AUTH_PASS=pick-a-password
+EOF
+
+# install cloudflared once, e.g.:
+#   https://pkg.cloudflare.com (Linux package), or `brew install cloudflared` (macOS)
+```
+
+**Every time you want to demo it:**
+
+```bash
+# 1. Start the server with basic auth turned on
+cd backend && source .venv/bin/activate
+set -a && source ../.kosh_auth.env && set +a
+python -m kosh serve --no-browser
+
+# 2. In another terminal, start the tunnel
+cloudflared tunnel --url http://127.0.0.1:8000
+```
+
+`cloudflared` prints a block containing a `https://<random-words>.trycloudflare.com`
+link — that's what you send the client, along with the username/password from
+`.kosh_auth.env` (send the credentials over a different channel than wherever
+the link itself is public, e.g. don't put the password on a public webpage).
+
+Both processes have to keep running on your machine for the link to work; closing
+either one kills it. The URL also changes every time you restart `cloudflared`,
+so update any link you've shared (e.g. on a personal site) if you restart it.
+
+**To change the password:** edit `.kosh_auth.env`, then restart the Kosh
+server (`Ctrl+C` and re-run step 1) — the tunnel doesn't need restarting,
+only the server reads the env vars.
+
+**For a link that doesn't change** each time, use a **named tunnel** instead
+(needs a Cloudflare account and a domain you control, with that domain's DNS
+on Cloudflare): `cloudflared tunnel login`, `cloudflared tunnel create kosh`,
+then `cloudflared tunnel route dns kosh kosh.yourdomain.com` and
+`cloudflared tunnel run --url http://127.0.0.1:8000 kosh`.
+
+If you'd rather not depend on your laptop staying on, the same basic-auth +
+`python -m kosh serve` setup works unchanged on a small VPS (e.g. a ~$5/mo
+Hetzner or DigitalOcean box) — just open port 8000 (or put nginx/Caddy in
+front for TLS on a real domain) instead of running a tunnel.
+
 ## What's real and what isn't
 
 | | Source |

@@ -17,3 +17,4 @@ backend/kosh/web_dist/
 frontend/dist/
 
 .DS_Store
+.kosh_auth.env

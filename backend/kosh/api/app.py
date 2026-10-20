@@ -1,16 +1,19 @@
 """HTTP API (FastAPI). Also serves the built web app from kosh/web_dist."""
 
+import base64
 import io
 import logging
+import secrets
 from datetime import date
 from typing import Any, Optional
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .. import config, settings_store
 from ..analytics.portfolio import (
@@ -39,6 +42,30 @@ DISCLAIMER = (
 )
 
 app = FastAPI(title="Kosh", version="0.1.0")
+
+
+class BasicAuthMiddleware(BaseHTTPMiddleware):
+    """Gate every request behind HTTP basic auth when KOSH_AUTH_USER/KOSH_AUTH_PASS are set.
+
+    Kosh has no login system (showcase MVP, single user) — this is the minimum needed
+    before exposing it over a tunnel or public URL to a client.
+    """
+
+    async def dispatch(self, request, call_next):
+        if not (config.AUTH_USER and config.AUTH_PASS):
+            return await call_next(request)
+        auth = request.headers.get("authorization", "")
+        if auth.startswith("Basic "):
+            try:
+                user, _, pw = base64.b64decode(auth[6:]).decode().partition(":")
+            except Exception:
+                user, pw = "", ""
+            if secrets.compare_digest(user, config.AUTH_USER) and secrets.compare_digest(pw, config.AUTH_PASS):
+                return await call_next(request)
+        return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="Kosh"'})
+
+
+app.add_middleware(BasicAuthMiddleware)
 
 
 @app.on_event("startup")

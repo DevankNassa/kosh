@@ -56,6 +56,10 @@ def main() -> None:
         port = getattr(args, "port", 8000)
         url = f"http://{host}:{port}"
         print(f"\nKosh is running at {url}  (press Ctrl+C to stop)\n")
+        from . import config
+        if not (config.AUTH_USER and config.AUTH_PASS):
+            print("No KOSH_AUTH_USER/KOSH_AUTH_PASS set — fine for localhost, but set them "
+                  "before exposing this over a tunnel or public URL.\n")
         if not getattr(args, "no_browser", False):
             try:
                 webbrowser.open(url)
