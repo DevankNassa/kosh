@@ -151,6 +151,19 @@ class IndexPrice(Base):
     close: Mapped[float] = mapped_column(Float)
 
 
+class CorporateAction(Base):
+    """Splits, bonus issues and consolidations from NSE, used to restate
+    stored closing prices so they compare like for like (analytics/adjust.py)."""
+
+    __tablename__ = "corporate_actions"
+    isin: Mapped[str] = mapped_column(String(12), primary_key=True)
+    ex_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    subject: Mapped[str] = mapped_column(String(300), primary_key=True)
+    symbol: Mapped[Optional[str]] = mapped_column(String(40), index=True)
+    # multiply closes before ex_date by this (1:1 bonus → 0.5, 10→2 split → 0.2)
+    factor: Mapped[float] = mapped_column(Float)
+
+
 class Transaction(Base):
     __tablename__ = "transactions"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

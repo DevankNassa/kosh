@@ -18,8 +18,15 @@ script: `README.md`.
   from tax until the user adds cost basis in Holdings.
 - **Market data: free end-of-day sources** behind loaders in `marketdata/`:
   AMFI NAV files, NSE bhavcopy (equities, ETFs, G-secs, SGBs, corporate bonds),
-  NSE index closes and Nifty 500 sector lists. No live feed. A bundled snapshot
-  (`marketdata/snapshot/`) keeps the demo working offline.
+  NSE index closes, NSE corporate actions and Nifty 500 sector lists. No live
+  feed. A bundled snapshot (`marketdata/snapshot/`) keeps the demo working offline.
+- **Market data is stored, not fetched on demand** (client asked for "real data
+  saved in a database", Oct 2026). Every daily close lives in SQLite `prices` /
+  `index_prices`; `backfill.py` loads history day by day (resumable), `jobs.py`
+  auto-refreshes after 7 pm while serving and fills missed days. Prices are
+  stored unadjusted; `analytics/adjust.py` restates them for splits/bonuses
+  from `corporate_actions`. NSE's UDiFF bhavcopy `PrvsClsgPric` is NOT
+  adjusted on ex-dates, so don't use it for adjustment.
 - **Corporate bonds:** priced from NSE trades, else a model (indicative G-sec
   curve derived from NSE trades + rating spread). Buy a CRISIL/ICRA valuation
   feed only if model-priced corporate bonds exceed ~10% of the book (SPEC §5.5).
@@ -32,9 +39,9 @@ script: `README.md`.
 ```
 backend/kosh/
   models.py        tables; transactions are the source of truth, lots are derived
-  marketdata/      amfi.py, nse.py, curve.py, refresh.py (+ snapshot/)
+  marketdata/      amfi.py, nse.py, curve.py, refresh.py, backfill.py (history), jobs.py (background/auto-refresh) (+ snapshot/)
   importer/cas.py  CAS → preview (savepoint, nothing saved) → commit; dedupe keys make re-import safe
-  analytics/       portfolio.py (FIFO lots, PriceBook, holdings, allocations), bonds.py, classify.py, xirr.py
+  analytics/       portfolio.py (FIFO lots, PriceBook, holdings, allocations), adjust.py (split/bonus), bonds.py, classify.py, xirr.py
   tax/             rules.py (versioned by transfer date), engine.py (set-off, 112A exemption, surcharge, cess), planner.py (what-if)
   impact/shocks.py events/scenarios as "shocks" → per-client impact
   demo/seed.py     8 fictional demo clients holding real instruments; sample "what if" events
@@ -48,6 +55,7 @@ frontend/src/      React + Vite + TS; pages/ and components/; builds into backen
 cd backend && source .venv/bin/activate     # Windows: .venv\Scripts\Activate.ps1
 python -m kosh serve        # app at http://127.0.0.1:8000 (first run fetches data + seeds demo)
 python -m kosh refresh      # fetch latest market data
+python -m kosh history --years 2   # store past end-of-day data (resumable)
 pytest                      # backend tests (pip install -e ".[dev]" first)
 cd frontend && npm run build    # type-check + build web app (re-run after frontend changes)
 cd frontend && npm run dev      # dev server with /api proxied to :8000
@@ -72,8 +80,10 @@ PDFs or `data/kosh.db`; ask the user for error messages instead.
 ## Status and next steps
 
 Built: market data, CAS import, portfolio views, tax view, what-if planner with
-Excel export, events/scenarios, demo data. 22 tests pass. Not yet verified with
-a real CAS PDF.
+Excel export, events/scenarios, demo data, stored market history (Settings →
+Stored market data; Market → Price history). 39 tests pass. Not yet verified
+with a real CAS PDF. AMFI NAV-history backfill not yet run against the live
+AMFI site (it was down for maintenance when written).
 
 Likely next:
 1. Test import with the user's real CAS; fix parsing/mapping issues.

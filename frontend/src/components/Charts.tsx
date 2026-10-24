@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useRef, useState } from "react";
 import { ASSET_LABEL, date as fmtDate, inrc, pct } from "../format";
 import { useTooltip } from "./ui";
 
@@ -244,24 +244,32 @@ const DEFAULT_COLORS = ["var(--s-equity)", "var(--text-3)"];
  * Scenarios "fund families" chart. `colors` lets a caller assign colour by the
  * series' *role* (e.g. always-orange debt, always-yellow gold) rather than by
  * position, since not every series is present for every event.
- * `compact` drops axes/legend for use as a small-multiple tile. */
+ * `compact` drops axes/legend for use as a small-multiple tile. Pass
+ * `rebased={false}` with a `yFormat` to plot raw values (e.g. a price history).
+ * A point's optional `note` is shown after its value in the hover readout. */
 export function MultiLineChart({
   series,
   eventDate,
   height = 260,
   colors = DEFAULT_COLORS,
   compact = false,
+  rebased = true,
+  yFormat = (v: number) => v.toFixed(0),
 }: {
-  series: { label: string; points: { date: string; value: number }[] }[];
+  series: { label: string; points: { date: string; value: number; note?: string }[] }[];
   eventDate?: string | null;
   height?: number;
   colors?: string[];
   compact?: boolean;
+  rebased?: boolean;
+  yFormat?: (v: number) => string;
 }) {
   const tt = useTooltip();
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hover, setHover] = useState<string | null>(null);
   const W = 720;
   const H = height;
-  const pad = compact ? { l: 4, r: 4, t: 4, b: 4 } : { l: 44, r: 16, t: 16, b: 28 };
+  const pad = compact ? { l: 4, r: 4, t: 4, b: 4 } : { l: rebased ? 44 : 68, r: 16, t: 16, b: 28 };
   const allPoints = series.flatMap((s) => s.points);
   if (!allPoints.length) return null;
   const toTs = (d: string) => new Date(d).getTime();
@@ -269,9 +277,9 @@ export function MultiLineChart({
   const ys = allPoints.map((p) => p.value);
   const x0 = Math.min(...xs);
   const x1 = Math.max(...xs);
-  const yMin = Math.min(...ys, 100);
-  const yMax = Math.max(...ys, 100);
-  const span = Math.max(yMax - yMin, 1);
+  const yMin = rebased ? Math.min(...ys, 100) : Math.min(...ys);
+  const yMax = rebased ? Math.max(...ys, 100) : Math.max(...ys);
+  const span = Math.max(yMax - yMin, rebased ? 1 : Math.abs(yMax) * 0.01 || 1);
   const lo = yMin - span * 0.1;
   const hi = yMax + span * 0.1;
   const sx = (x: number) => pad.l + ((x - x0) / (x1 - x0 || 1)) * (W - pad.l - pad.r);
@@ -280,13 +288,47 @@ export function MultiLineChart({
   const dates = Array.from(new Set(allPoints.map((p) => p.date))).sort();
   const xTicks = [dates[0], dates[Math.floor(dates.length / 2)], dates[dates.length - 1]];
   const evX = eventDate ? sx(toTs(eventDate)) : null;
+  const byDate = series.map((s) => new Map(s.points.map((p) => [p.date, p])));
+  const dateTs = dates.map(toTs);
+
+  // Crosshair: snap to the stored date nearest the pointer; one tooltip lists every series.
+  const onMove = (e: React.MouseEvent) => {
+    const box = svgRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const ts = x0 + (((e.clientX - box.left) / box.width) * W - pad.l) / (W - pad.l - pad.r) * (x1 - x0);
+    let lo2 = 0, hi2 = dateTs.length - 1;
+    while (hi2 - lo2 > 1) {
+      const mid = (lo2 + hi2) >> 1;
+      if (dateTs[mid] <= ts) lo2 = mid; else hi2 = mid;
+    }
+    const d = Math.abs(dateTs[hi2] - ts) < Math.abs(dateTs[lo2] - ts) ? dates[hi2] : dates[lo2];
+    setHover(d);
+    tt.show(
+      e,
+      <>
+        <div className="t-title">{fmtDate(d)}</div>
+        {series.map((s, i) => {
+          const p = byDate[i].get(d);
+          return p ? (
+            <div key={s.label} className="t-row">
+              <i className="dot" style={{ background: colors[i % colors.length] }} />
+              <span>{s.label}</span>
+              <b>{rebased ? p.value.toFixed(1) : yFormat(p.value)}</b>
+              {p.note && <span className="faint">{p.note}</span>}
+            </div>
+          ) : null;
+        })}
+      </>,
+    );
+  };
+
   return (
     <div style={{ position: "relative" }}>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Line chart">
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Line chart">
         {!compact && yTicks.map((t) => (
           <g key={t}>
             <line x1={pad.l} x2={W - pad.r} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" strokeWidth={1} />
-            <text x={pad.l - 8} y={sy(t) + 4} textAnchor="end" fontSize={11} fill="var(--text-3)">{t.toFixed(0)}</text>
+            <text x={pad.l - 8} y={sy(t) + 4} textAnchor="end" fontSize={11} fill="var(--text-3)">{yFormat(t)}</text>
           </g>
         ))}
         {!compact && xTicks.map((d, i) => (
@@ -314,29 +356,29 @@ export function MultiLineChart({
           const path = s.points.map((p, j) => `${j ? "L" : "M"}${sx(toTs(p.date)).toFixed(1)},${sy(p.value).toFixed(1)}`).join(" ");
           return <path key={s.label} d={path} fill="none" stroke={colors[i % colors.length]} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />;
         })}
-        {!compact && dates.map((d) => (
+        {hover && (
+          <g pointerEvents="none">
+            <line x1={sx(toTs(hover))} x2={sx(toTs(hover))} y1={pad.t} y2={H - pad.b} stroke="var(--text-3)" strokeWidth={1} />
+            {series.map((s, i) => {
+              const p = byDate[i].get(hover);
+              return p ? (
+                <circle key={s.label} cx={sx(toTs(hover))} cy={sy(p.value)} r={4.5} fill={colors[i % colors.length]}
+                        stroke="var(--surface)" strokeWidth={2} />
+              ) : null;
+            })}
+          </g>
+        )}
+        {!compact && (
           <rect
-            key={d}
-            x={sx(toTs(d)) - 4}
+            x={pad.l}
             y={pad.t}
-            width={8}
+            width={W - pad.l - pad.r}
             height={H - pad.t - pad.b}
             fill="transparent"
-            onMouseMove={(e) =>
-              tt.show(
-                e,
-                <>
-                  <div className="t-title">{fmtDate(d)}</div>
-                  {series.map((s) => {
-                    const p = s.points.find((pt) => pt.date === d);
-                    return p ? <div key={s.label}>{s.label}: {p.value.toFixed(1)}</div> : null;
-                  })}
-                </>,
-              )
-            }
-            onMouseLeave={tt.hide}
+            onMouseMove={onMove}
+            onMouseLeave={() => { setHover(null); tt.hide(); }}
           />
-        ))}
+        )}
       </svg>
       {!compact && (
         <div className="legend">

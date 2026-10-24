@@ -150,6 +150,100 @@ def refresh(s: Session = Depends(get_session)):
     return st
 
 
+class HistoryIn(BaseModel):
+    years: Optional[float] = None
+    start: Optional[date] = None
+    end: Optional[date] = None
+
+
+@app.get("/api/market/data")
+def market_data(s: Session = Depends(get_session)):
+    """What market data the database holds, and the history-load progress."""
+    from ..marketdata import jobs
+    from ..marketdata.backfill import coverage
+    return {**coverage(s), "history": jobs.history_status(),
+            "auto_refresh_after_hour": jobs.REFRESH_AFTER_HOUR}
+
+
+@app.post("/api/market/history")
+def load_history(body: HistoryIn):
+    """Start storing past end-of-day data (NSE securities and indices, AMFI
+    NAVs) in the background. Days already stored are skipped."""
+    from datetime import timedelta
+
+    from ..marketdata import jobs
+    end = body.end or date.today()
+    start = body.start or (end - timedelta(days=round(365 * (body.years or 1))))
+    if start > end:
+        raise HTTPException(400, "Start date is after end date")
+    if not jobs.start_history(start, end):
+        raise HTTPException(409, "A market data job is already running")
+    return jobs.history_status()
+
+
+@app.post("/api/market/history/stop")
+def stop_history():
+    from ..marketdata import jobs
+    jobs.stop_history()
+    return {"ok": True}
+
+
+@app.get("/api/instruments/{isin}/prices")
+def instrument_prices(isin: str, days: int = 365, s: Session = Depends(get_session)):
+    """Stored daily prices for one instrument (newest `days` calendar days)."""
+    from datetime import timedelta
+
+    from ..analytics.adjust import adjusted_closes, factors_for
+    from ..models import Price
+    ins = s.get(Instrument, isin)
+    if ins is None:
+        raise HTTPException(404, "Instrument not found")
+    # a split often comes with a new ISIN: join the same company's share
+    # (same NSE symbol and issuer code) under its earlier ISINs
+    isins = [isin]
+    if ins.symbol and ins.kind in ("equity", "etf", "reit_invit"):
+        isins += [i for i in s.scalars(select(Instrument.isin).where(
+            Instrument.symbol == ins.symbol, Instrument.kind == ins.kind,
+            Instrument.isin.like(isin[:7] + "%"), Instrument.isin != isin))]
+    last = s.scalar(select(func.max(Price.date)).where(Price.isin.in_(isins)))
+    by_date: dict = {}
+    if last is not None:
+        for p in s.scalars(select(Price).where(Price.isin.in_(isins), Price.date >= last - timedelta(days=days),
+                                               Price.source != "statement").order_by(Price.date)):
+            if p.date not in by_date or p.isin == isin:
+                by_date[p.date] = p
+    rows = [by_date[d] for d in sorted(by_date)]
+    actions = factors_for(s, isins, symbol=ins.symbol if len(isins) > 1 or ins.kind == "equity" else None)
+    adj = adjusted_closes(rows, actions.get(isin, []))
+    return {"isin": isin, "name": ins.name, "symbol": ins.symbol, "kind": ins.kind,
+            "adjusted": any(abs(a - p.price) > 1e-9 for a, p in zip(adj, rows)),
+            "actions": sorted({(d, k) for d, k in actions.get(isin, []) if rows and d > rows[0].date}),
+            "points": [{"date": p.date, "price": round(a, 4), "close": p.price, "source": p.source}
+                       for p, a in zip(rows, adj)]}
+
+
+@app.get("/api/backup")
+def backup(s: Session = Depends(get_session)):
+    """A consistent copy of the whole database file (clients and market data)."""
+    import os
+    import sqlite3
+    import tempfile
+
+    from starlette.background import BackgroundTask
+    fd, tmp = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    src = s.connection().connection.driver_connection
+    dest = sqlite3.connect(tmp)
+    try:
+        src.backup(dest)
+    finally:
+        dest.close()
+    audit(s, "database_backup", None)
+    return FileResponse(tmp, media_type="application/vnd.sqlite3",
+                        filename=f"kosh-backup-{date.today():%Y%m%d}.db",
+                        background=BackgroundTask(os.remove, tmp))
+
+
 # ---------------------------------------------------------------- dashboard
 
 @app.get("/api/dashboard")

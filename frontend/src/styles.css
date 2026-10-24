@@ -231,7 +231,8 @@ button, .btn {
   font: inherit; font-weight: 560; border-radius: 8px; border: 1px solid var(--border); background: var(--surface);
   color: var(--text); padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
 }
-button:hover { background: var(--surface-2); }
+button:hover, a.btn:hover { background: var(--surface-2); }
+a.btn { text-decoration: none; }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 button.primary:hover { filter: brightness(1.08); }
 button.ghost { border-color: transparent; background: transparent; color: var(--link); padding: 4px 6px; }
@@ -303,6 +304,8 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .stackbar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--surface); }
 .stackbar > div { height: 100%; min-width: 2px; }
+.progress { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.progress > div { height: 100%; background: var(--accent); transition: width 0.4s; }
 .hbar-row { display: grid; grid-template-columns: 130px 1fr 92px; gap: 10px; align-items: center; padding: 4px 0; font-size: 12.5px; }
 .hbar-track { position: relative; height: 12px; }
 .hbar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; }
@@ -318,6 +321,14 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px
   padding: 8px 10px; font-size: 12px; max-width: 280px;
 }
 .tooltip .t-title { font-weight: 600; margin-bottom: 2px; }
+.tooltip .t-row { display: flex; align-items: center; gap: 6px; margin-top: 3px; white-space: nowrap; }
+.tooltip .t-row > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.tooltip .t-row b { margin-left: auto; padding-left: 8px; font-variant-numeric: tabular-nums; }
+.series-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 8px 6px 10px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 12.5px; max-width: 100%; }
+.series-chip .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.series-chip button { border: 0; background: none; padding: 0 2px; font-size: 15px; line-height: 1; color: var(--text-3); cursor: pointer; }
+.series-chip button:hover { color: var(--text); }
 
 /* ---------- modal ---------- */
 .modal-back { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); display: grid; place-items: center; z-index: 40; padding: 16px; }

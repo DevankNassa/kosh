@@ -6,12 +6,13 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Optional
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, aliased
 
 from .. import settings_store
 from ..models import Account, Client, Instrument, Price, Transaction
 from ..tax import rules
+from .adjust import factor_between, factors_for
 from .bonds import RATING_SPREADS, BondTerms, accrued, cashflows, clean_price, interp_curve, risk, ytm
 from .classify import equity_share, maturity_bucket, rating_bucket
 from .xirr import xirr
@@ -175,9 +176,16 @@ class PriceBook:
         rows: dict[str, list[Price]] = defaultdict(list)
         for i in range(0, len(isins), 500):
             chunk = isins[i:i + 500]
-            for p in session.scalars(select(Price).where(Price.isin.in_(chunk)).order_by(Price.isin, Price.date.desc())):
-                if len(rows[p.isin]) < 2:
-                    rows[p.isin].append(p)
+            # only the latest two prices per ISIN, not the full stored history
+            rn = (func.row_number().over(partition_by=Price.isin, order_by=Price.date.desc())
+                  .label("rn"))
+            latest = select(Price, rn).where(Price.isin.in_(chunk)).subquery()
+            recent = aliased(Price, latest)
+            q = select(recent).where(latest.c.rn <= 2).order_by(recent.isin, recent.date.desc())
+            for p in session.scalars(q):
+                rows[p.isin].append(p)
+        # a split / bonus ex-date between the last two closes isn't a price move
+        self._actions = factors_for(session, isins, since=self.asof - timedelta(days=30)) if isins else {}
         for isin, ins in instruments.items():
             self._quotes[isin] = self._build(ins, rows.get(isin, []))
 
@@ -190,6 +198,7 @@ class PriceBook:
             q = Quote(p.price, p.date, p.source, "observed")
             if len(obs) > 1:
                 q.prev_price, q.prev_date = obs[1].price, obs[1].date
+                q.prev_price *= factor_between(self._actions.get(ins.isin, ()), obs[1].date, p.date)
             return q
         if ins.kind in BOND_KINDS:
             m = model_quote(ins, self.curve, self.asof)

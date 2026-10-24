@@ -24,8 +24,8 @@ class NavRow:
     plan: Optional[str]
 
 
-def _get(url: str) -> str:
-    r = httpx.get(url, timeout=config.HTTP_TIMEOUT, headers={"User-Agent": config.USER_AGENT},
+def _get(url: str, timeout: float = config.HTTP_TIMEOUT) -> str:
+    r = httpx.get(url, timeout=timeout, headers={"User-Agent": config.USER_AGENT},
                   follow_redirects=True)
     r.raise_for_status()
     return r.text
@@ -126,8 +126,14 @@ def fetch_latest() -> list[NavRow]:
 
 
 def fetch_history(start: date, end: date) -> list[NavRow]:
+    """NAVs of every scheme over [start, end]. A week of all schemes is a
+    few MB, so callers backfilling long ranges should fetch in chunks."""
     url = NAV_HISTORY_URL.format(frm=start.strftime("%d-%b-%Y"), to=end.strftime("%d-%b-%Y"))
-    return parse_nav_history(_get(url))
+    text = _get(url, timeout=180.0)
+    if "<html" in text[:500].lower():
+        # AMFI serves an HTML page (e.g. a maintenance notice) with status 200/503
+        raise RuntimeError("AMFI returned a web page instead of NAV data (site down for maintenance?)")
+    return parse_nav_history(text)
 
 
 def previous_navs(latest: Iterable[NavRow], lookback_days: int = 7) -> dict[str, tuple[date, float]]:

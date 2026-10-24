@@ -14,6 +14,7 @@ def test_snapshot_fallback_runs_demo(session, monkeypatch):
     monkeypatch.setattr(amfi, "fetch_latest", _boom)
     monkeypatch.setattr(nse, "fetch_latest_bhavcopies", _boom)
     monkeypatch.setattr(nse, "fetch_sectors", lambda: {})
+    monkeypatch.setattr(nse, "fetch_corporate_actions", _boom)
     st = refresh.refresh_market_data(session)
     assert st["snapshot"]["ok"]
     seed_demo(session)

@@ -42,11 +42,33 @@ Other commands (run from `backend/` with the virtualenv active):
 | Command | What it does |
 |---|---|
 | `python -m kosh refresh` | Fetch the latest end-of-day market data (also a button in Settings) |
+| `python -m kosh history --years 2` | Store past end-of-day data (also in Settings → Load past history); re-run to resume |
 | `python -m kosh seed` | Add the demo clients and sample scenarios |
 | `python -m kosh serve --port 8080` | Use another port |
 
 Data is stored in `data/kosh.db` (SQLite; ignored by git). Delete that file to
 start again from scratch.
+
+### Stored market data
+
+Every price Kosh fetches is kept in the database, one row per instrument per
+trading day. Kosh never fetches prices live while you work: screens read the
+stored data.
+
+- **Daily:** while `kosh serve` is running, Kosh refreshes after 7 pm (when
+  NSE and AMFI have published) and fills in any trading days it missed while
+  the laptop was off. Turn this off with `--no-auto-refresh`.
+- **History:** Settings → *Load past history*, or `python -m kosh history`,
+  stores past NSE bhavcopies (every listed share, ETF, bond, SGB), NSE index
+  closes, AMFI NAVs (every scheme), and NSE's list of splits and bonus issues.
+  NSE takes about 3–5 minutes per year. Days already stored are skipped.
+- **Size:** NSE is roughly 75 MB per year. AMFI NAVs for every scheme are much
+  bigger (several hundred MB per year); use `--sources actions,indices,nse` to
+  skip them.
+- **Splits and bonus issues:** closing prices are stored as published. Charts
+  and day-change figures restate them using NSE's corporate-actions list.
+- **Backup:** Settings → *Download database backup* saves a copy of the
+  whole database (clients included).
 
 ## A five-minute demo
 
@@ -129,6 +151,7 @@ front for TLS on a real domain) instead of running a tunnel.
 | Prices, NAVs, previous close | Real: AMFI NAV files and the NSE bhavcopy, end of day |
 | Sectors | Real: NSE Nifty 500 / Microcap 250 constituent lists |
 | Index strip | Real: NSE index closes |
+| Price history (compare up to 5) | Real: stored NSE / AMFI end-of-day data, adjusted for splits and bonus issues |
 | G-sec yield curve | Indicative, derived from G-secs traded on NSE that day |
 | Demo clients and their purchase prices | Made up (generated from today's price) |
 | Sample events | Hypothetical "what if" scenarios, clearly labelled |
@@ -143,7 +166,7 @@ Mutual Fund Distributor. It never recommends a purchase or sale (see
 
 ```
 backend/kosh/
-  marketdata/   AMFI + NSE loaders, yield curve, offline snapshot
+  marketdata/   AMFI + NSE loaders, history backfill, auto-refresh, yield curve, offline snapshot
   importer/     CAS PDF import (casparser) with preview and reconciliation
   analytics/    FIFO lots, valuation, allocations, bond maths, XIRR
   tax/          versioned capital-gains rules, tax engine, what-if planner

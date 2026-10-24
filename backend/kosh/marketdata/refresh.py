@@ -134,8 +134,8 @@ def _refresh_nse(session: Session, today: date) -> dict:
             session.execute(Instrument.__table__.update()
                             .where(Instrument.isin == row["isin"])
                             .values(symbol=row["symbol"], listed=True))
-    prices = [dict(isin=r.isin, date=r.trade_date, price=r.close, source="nse", level="observed") for r in cur]
-    prices += [dict(isin=r.isin, date=r.trade_date, price=r.close, source="nse", level="observed") for r in prev]
+    prices = [dict(isin=r.isin, date=r.trade_date, price=r.close, source="nse", level="observed")
+              for r in cur + prev]
     upsert_prices(session, prices)
 
     curve, n = derive_curve(cur, cur[0].trade_date)
@@ -156,6 +156,13 @@ def _refresh_sectors(session: Session) -> dict:
     return {"ok": bool(sectors), "count": len(sectors)}
 
 
+def _refresh_actions(session: Session, today: date) -> dict:
+    """Recent splits / bonus issues, so share price history stays comparable."""
+    from .backfill import store_corporate_actions
+    rows = nse.fetch_corporate_actions(today - timedelta(days=30), today)
+    return {"ok": True, "count": store_corporate_actions(session, rows)}
+
+
 def _refresh_indices(session: Session, asof: date) -> dict:
     wanted = ["Nifty 50", "Nifty Bank", "Nifty Midcap 100", "Nifty Smallcap 100",
               "Nifty Financial Services", "Nifty IT", "Nifty 10 yr Benchmark G-Sec", "India VIX"]
@@ -164,12 +171,12 @@ def _refresh_indices(session: Session, asof: date) -> dict:
     pick = [by_name[n] for n in wanted if n in by_name]
     pick.sort(key=lambda r: wanted.index(r["name"]))
     settings_store.put(session, "indices", {"asof": asof, "items": pick})
-    # also append today's close for every index used by real-data scenarios
-    # and the market/event chart, building up real history for free over time
-    tracked = [dict(name=r["name"], date=asof, close=r["close"])
-               for r in rows if r["name"] in TRACKED_INDICES]
-    upsert_index_prices(session, tracked)
-    return {"ok": bool(pick), "count": len(pick), "tracked": len(tracked)}
+    # also store today's close for every index (real-data scenarios and the
+    # market/event chart read these), building up real history over time
+    stored = [dict(name=r["name"], date=asof, close=r["close"]) for r in rows if r["name"]]
+    upsert_index_prices(session, stored)
+    return {"ok": bool(pick), "count": len(pick), "stored": len(stored),
+            "tracked": sum(r["name"] in TRACKED_INDICES for r in stored)}
 
 
 def _add_trading_days(d: date, n: int) -> date:
@@ -214,6 +221,7 @@ def refresh_market_data(session: Session, today: date | None = None) -> dict:
             status[name] = {"ok": False, "error": str(e)[:300]}
     nse_asof = status.get("nse", {}).get("asof")
     for name, fn in (("sectors", lambda: _refresh_sectors(session)),
+                     ("actions", lambda: _refresh_actions(session, today)),
                      ("indices", lambda: _refresh_indices(session, nse_asof) if nse_asof else {"ok": False})):
         try:
             status[name] = fn()

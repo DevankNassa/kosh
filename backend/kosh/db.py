@@ -23,7 +23,8 @@ def get_engine():
         config.ensure_dirs()
         _engine = create_engine(
             f"sqlite:///{config.DB_PATH}",
-            connect_args={"check_same_thread": False},
+            # wait for a background history load's write instead of failing
+            connect_args={"check_same_thread": False, "timeout": 60},
         )
 
         @event.listens_for(_engine, "connect")

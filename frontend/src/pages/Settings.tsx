@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useStatus } from "../App";
 import { api } from "../api";
 import { LineChart } from "../components/Charts";
+import { StoredData } from "../components/StoredData";
 import { ErrorNote, useApi } from "../components/ui";
 import { date, num, pct } from "../format";
 
@@ -78,8 +79,12 @@ export default function Settings() {
               {m.snapshot && src("snapshot", "Bundled offline snapshot", (x) => `used, prices of ${date(x.asof)}`)}
             </tbody>
           </table>
-          <p className="small faint" style={{ marginTop: 8 }}>Last refresh {m.finished ? new Date(m.finished).toLocaleString("en-IN") : "never"}. End-of-day data; refresh once a day after the market closes.</p>
+          <p className="small faint" style={{ marginTop: 8 }}>Last refresh {m.finished ? new Date(m.finished).toLocaleString("en-IN") : "never"}. End-of-day data. Kosh refreshes automatically each evening while it is running.</p>
         </div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <StoredData />
       </div>
 
       <div className="grid g2" style={{ marginTop: 16 }}>

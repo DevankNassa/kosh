@@ -4,6 +4,8 @@
   refresh            fetch today's market data
   seed               add the demo clients and sample scenarios
   snapshot           save market data for the demo instruments (offline fallback)
+  history            store past end-of-day data (NSE securities + indices, AMFI NAVs)
+                     e.g. `history --years 2`; days already stored are skipped
   backfill-indices   fetch historical sector/benchmark index closes for a date range
 """
 
@@ -44,9 +46,16 @@ def main() -> None:
     sp.add_argument("--port", type=int, default=8000)
     sp.add_argument("--no-browser", action="store_true")
     sp.add_argument("--reload", action="store_true")
+    sp.add_argument("--no-auto-refresh", action="store_true",
+                    help="don't refresh market data automatically each evening")
     sub.add_parser("refresh")
     sub.add_parser("seed")
     sub.add_parser("snapshot")
+    hp = sub.add_parser("history")
+    hp.add_argument("--years", type=float, default=1.0)
+    hp.add_argument("--from", dest="start", help="YYYY-MM-DD (overrides --years)")
+    hp.add_argument("--to", dest="end", help="YYYY-MM-DD (default today)")
+    hp.add_argument("--sources", default="indices,nse,amfi", help="comma-separated: indices,nse,amfi")
     bp = sub.add_parser("backfill-indices")
     bp.add_argument("--from", dest="start", required=True, help="YYYY-MM-DD")
     bp.add_argument("--to", dest="end", required=True, help="YYYY-MM-DD")
@@ -65,6 +74,11 @@ def main() -> None:
         if not (config.AUTH_USER and config.AUTH_PASS):
             print("No KOSH_AUTH_USER/KOSH_AUTH_PASS set — fine for localhost, but set them "
                   "before exposing this over a tunnel or public URL.\n")
+        if not getattr(args, "no_auto_refresh", False):
+            from .marketdata.jobs import REFRESH_AFTER_HOUR, start_scheduler
+            start_scheduler()
+            print(f"Market data refreshes automatically after {REFRESH_AFTER_HOUR}:00 each day "
+                  "while Kosh is running.\n")
         if not getattr(args, "no_browser", False):
             try:
                 webbrowser.open(url)
@@ -76,6 +90,24 @@ def main() -> None:
         from .marketdata.refresh import refresh_market_data
         with session_scope() as s:
             print(json.dumps(refresh_market_data(s), indent=1, default=str))
+    elif args.cmd == "history":
+        from datetime import timedelta
+
+        from .marketdata.backfill import backfill_history
+        end = date.fromisoformat(args.end) if args.end else date.today()
+        start = date.fromisoformat(args.start) if args.start else end - timedelta(days=round(365 * args.years))
+        last = [0.0]
+
+        def show(p):
+            import time
+            if p["total"] and (time.time() - last[0] > 2 or p["done"] == p["total"]):
+                last[0] = time.time()
+                print(f"  {p['done']}/{p['total']}  {p['source'] or 'done'} {p['date'] or ''}", flush=True)
+
+        print(f"Storing market history {start} → {end} (Ctrl+C to stop; re-run to resume)")
+        with session_scope() as s:
+            print(json.dumps(backfill_history(s, start, end, sources=args.sources.split(","), progress=show),
+                             indent=1, default=str))
     elif args.cmd == "seed":
         from .demo.seed import seed_demo
         with session_scope() as s:
